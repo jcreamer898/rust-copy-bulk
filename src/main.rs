@@ -1,42 +1,27 @@
-use rayon::prelude::*;
-use fs_extra::file::CopyOptions;
-use fs_extra::file::copy;
-use std::time::Instant;
-use std::fs;
-use std::fs::File;
 use std::path::Path;
+use glob::glob;
 use serde::{Serialize, Deserialize};
+use std::env;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct CopyFile {
-  src: String,
-  dest: String
-}
-
-fn compute_job(file: CopyFile) -> () {
-    let parent = Path::new(&file.dest).parent().unwrap();
-    let mut options = CopyOptions::new();
-    options.overwrite = true;
-
-    // println!("Copy {} to {}", file.src, parent.to_string_lossy());
-    fs::create_dir_all(parent).expect("Could not create directory");
-    copy(file.src, file.dest, &options).expect("Failed to copy");
+struct Workspace {
+  dir: String,
+  package_json: String
 }
 
 fn main() {
+    let cwd = env::current_dir();
+    let pkgs: Vec<&Workspace> = vec![];
+
     println!("Reading input...");
-    let json_now = Instant::now();
-    let json_file_path = Path::new("./queue.json");
-    let file = File::open(json_file_path).expect("file not found");
-    let jobs:Vec<CopyFile> = serde_json::from_reader(file).expect("file not found");
-
-    println!("Took: {:.2?} to parse JSON", json_now.elapsed());
-    println!("Copying {} files", jobs.len());
+    println!("{:?}", cwd);
     
-    let now = Instant::now();
-
-    jobs.into_par_iter()
-        .for_each(compute_job);
-
-    println!("Took: {:.2?}", now.elapsed());
+    let pkgGlob = Path::new(&cwd);
+  
+    for entry in glob(pkgGlob).expect("Failed to read glob pattern") {
+        match entry {
+            Ok(path) => println!("{:?}", Path::new(&cwd).join(path)),
+            Err(e) => println!("{:?}", e),
+        }
+    }
 }
